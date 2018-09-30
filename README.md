@@ -12,3 +12,4 @@
 | hw02_instructions.Rmd | homework instructions |
 | Readme.md | This file |
 | Readme.html | HTML version |
+"# hw04-RetoSterchi" 
