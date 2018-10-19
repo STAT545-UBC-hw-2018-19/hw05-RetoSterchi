@@ -1,10 +1,6 @@
 "# hw05-RetoSterchi" 
 
-# File overview
+The submission file for this homework is [hw05](https://github.com/STAT545-UBC-students/hw05-RetoSterchi/blob/master/hw05.md)
 
-| File name | Comment |
-|:---|:---|
-| hw05-RetoSterchi.Rproj | RStudio project |
-| hw05_gapminder.md | hw05 Markdown output |
-| hw05_gapminder.Rmd | hw05 RMarkdown work file |
-| Readme.md | This file |
+Plots are stored in /plots/ folder.
+Data is stored in /data/ folder.
