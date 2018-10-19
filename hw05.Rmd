@@ -1,0 +1,303 @@
+---
+title: "hw05"
+author: '@RetoSterchi'
+date: "October 18, 2018"
+output: github_document
+always_allow_html: yes
+---
+
+
+# Homework 05: Factor and figure management
+
+## Part 1: Factor management
+
+### First step: Load packages
+
+```{r message=FALSE, warning=FALSE}
+require(gapminder)
+require(ggplot2)
+require(dplyr)
+require(tidyr)
+```
+
+### Next step: Confirm data structure
+
+Let's ensure that the data indeed contains factors. 
+
+```{r}
+str(gapminder)
+```
+
+This makes sense - the dataset contains two variables that are factors: `country` and `continent`.
+
+
+### Drop Oceania
+Let's drop the 'Oceania' factor.
+
+```{r}
+## Let's check the factor levels of the 'continent' variable
+levels(gapminder$continent)
+
+## Let's see how many rows there are in total our original dataset 
+## and how many there are for the continent 'Oceania'
+nrow(gapminder)
+nrow(gapminder[gapminder$continent == "Oceania", ])
+
+## Let's remove the observations associated with 
+## the 'continent' of Oceania and remove unused factor levels
+gapminder %>% 
+  filter(continent != "Oceania") %>% 
+  droplevels() -> df
+
+## Let's check whether those levels were dropped
+levels(df$continent)
+
+## Let's see how many rows there are left in our manipulated dataset
+nrow(df)
+
+```
+
+That all looks good. We had 1704 rows in our original dataset and remove the 24 rows associated with data from the continent 'Oceania'. We also cleaned up our factor levels and dropped the factor level for 'Oceania'.
+
+### Reorder the levels
+Let's use the forcats package to change the order of the factor levels.
+
+```{r}
+
+## The default order of the factor levels is alphabetical
+df$continent %>% levels()
+
+## Now let's install and use the `forcats` package to 
+## change the order of the factor levels
+
+# install.packages("forcats")
+library(forcats)
+
+## order by frequency
+df$continent %>% 
+  fct_infreq() %>%
+  levels()
+
+## backwards
+df$continent %>% 
+  fct_infreq() %>%
+  fct_rev() %>% 
+  levels()
+
+```
+
+Now let's explore what the order of the factor levels has on plotting.
+
+```{r}
+df %>% 
+  ggplot(aes(x = continent, y = lifeExp, fill = continent)) + 
+  geom_boxplot(outlier.shape = NA, alpha = 0.5) +
+  ggtitle("Life expectancy for different continents") +
+  xlab("Continent") +
+  ylab("Life expectancy (years") + 
+  theme(legend.position="none") # we dont need a legend
+```
+
+If we do not specify the ordering of the factors, the plotting function just assumes we want to plot in the default order of how the factors are ordered (which in our case is alphabetically).
+
+```{r}
+
+df %>% 
+  ggplot(aes(x = fct_infreq(continent), y = lifeExp , fill = continent)) + 
+  geom_boxplot(outlier.shape = NA, alpha = 0.5) +
+  ggtitle("Life expectancy for different continents") +
+  xlab("Continent") +
+  ylab("Life expectancy (years") + 
+  theme(legend.position="none") # we dont need a legend
+
+```
+
+Re-ordering the factor will also determine the order of (in our case) the variables on the x-axis, because we only ordered by frequency of data points for each variables (continent).
+
+If we just use `arrange()`, we will not permanently re-order the factors for plotting. The plotting function still grabs the order from the actual factor order.
+
+```{r}
+df %>% 
+  arrange(desc(continent)) %>% 
+  ggplot(aes(x = continent, y = lifeExp, fill = continent)) + 
+  geom_boxplot(outlier.shape = NA, alpha = 0.5) +
+  ggtitle("Life expectancy for different continents") +
+  xlab("Continent") +
+  ylab("Life expectancy (years") + 
+  theme(legend.position="none") # we dont need a legend
+```
+
+## Part 2: File I/O
+
+Let's explore some I/O options for saving and reading data files. First, we can save an R object into a RDS file. Note: files are stored under /data folder.
+
+```{r}
+## Let's re-order the factor 'continent' to see how that 
+## will be affected once we import the data again
+## order by frequency
+df$continent <- factor(df$continent, levels = c("Europe", "Americas", "Africa", "Asia"))
+
+## Let's save our R object 'df' to a file (to the working directory)
+saveRDS(object = df, file = "data/df.rds")
+
+## We can read it back in
+readRDS("data/df.rds")
+
+## and assign it to a variable
+df <- readRDS("data/df.rds")
+
+## Let's check out the factor levels - Looks like our order was preserved
+levels(df$continent)
+```
+Note: There is also a function `save()`. The main difference is that save() can save many objects to a file in a single call, whilst saveRDS(), being a lower-level function, works with a single object at a time. 
+
+The same thing works with writing data to a .CSV file:
+
+```{r}
+write.csv(df, file="data/df.csv")
+
+df <- read.csv("data/df.csv")
+
+## Let's have a look at the imported df. The variables still look the same.
+str(df)
+
+## But the .CSV file contains a column for the row number ('X') 
+## that was produced when storing the .CSV. We can omit that.
+df <- df[,-1]
+str(df)
+
+## Once again, let's check out the factor levels - Looks like importing 
+## a CSV file makes a default order (alphabetically). That makes sense 
+## since the factor order was not stored in the .CSV.
+levels(df$continent)
+```
+
+
+## Part 3: Visualization design
+
+Remake at least one figure or create a new one, in light of something you learned in the recent class meetings about visualization design and color. Maybe juxtapose your first attempt and what you obtained after some time spent working on it. Reflect on the differences. If using Gapminder, you can use the country or continent color scheme that ships with Gapminder. Consult the dimensions listed in [All the Graph Things](http://stat545.com/graph00_index.html).
+
+Let's juxtapose two graphs that have the same content but are designed differently. I followed some guidelines of http://stat545.com/block015_graph-dos-donts.html for this exercise.
+
+```{r}
+
+## Prepare data
+gapminder %>% 
+  filter(year == 2007) %>% 
+  group_by(continent) %>% 
+  summarise(totpop = sum(as.numeric(pop))) -> plotDF
+
+## Plot 1: Just going with the defaults
+p1 <- ggplot(data = plotDF, aes(x = continent, y = totpop, fill = continent)) +
+      geom_col()
+```
+
+Now on to the second version of the plot.
+```{r}
+## Plot 2: Let's do a little tuning with stripping the graphic down to the necessary
+
+## Let's set up the basic plot
+p2 <- ggplot(data = plotDF, aes(x = continent, y = totpop, fill = continent)) + 
+  geom_col() +
+  theme_classic() + # clean BW theme
+  theme(legend.position="none") + # we dont need a legend
+  ggtitle("The world population") # add a descriptive title
+
+## Add data labels
+p2 <- p2 + geom_text(aes(x = continent, y = totpop, 
+                label = paste0(round(totpop / 1000000, 0), " Mio.")),
+                vjust = -1)
+
+## More room for label over the bar
+ylim <- c(0, max(plotDF$totpop * 1.1))
+p2 <- p2 + scale_y_continuous(expand = c(0,0), limits = ylim)
+
+## Use custom colors
+p2 <- p2 +  scale_fill_manual(values = c("grey", "grey", "red", "grey", "grey"))
+
+## Remove redundant information and labels
+p2 <- p2 +  theme(axis.line = element_blank(), # remove border
+                axis.title.x = element_blank(), # remove x-axis title
+                axis.ticks.x = element_blank(), # remove x-axis ticks
+                axis.title.y = element_blank(), # remove y-axis title
+                axis.ticks.y = element_blank(), # remove y-axis ticks
+                axis.text.y  = element_blank(), # remove y-axis labels
+                axis.text = element_text(size = 12), # make font bigger
+                plot.title = element_text(size = 18, hjust = 0.5)) # bigger font and centered
+```
+
+Now let's plot the two versions
+```{r message=FALSE, warning=FALSE}
+## Plot them both    
+p1
+p2
+```
+
+We cleaned up the second plot very nicely! It is pretty easy for the reader to get the key point of the plot very quickly and all the numbers and labels are readily accessible.
+
+Then, let's make a new graph with`plotly`.
+
+```{r message=FALSE, warning=FALSE}
+library(plotly)
+
+p <- plot_ly(
+  x = plotDF$continent,
+  y = plotDF$totpop,
+  type = "bar"
+)
+
+p
+```
+Note: plotly graph does not work in markdown and would need HTML file (not compiled for this homework).
+
+Plotly lets us zoom in or out of the graph and we can hover over data points to get their values. Two options that can be very valuable for data exploration purposes.
+
+## Part 4: Writing figures to file
+
+Let's explore some of the possibilities of `ggsave()' for saving plots. All plot outputs are stored in the repo folder /plots.
+
+```{r message=FALSE, warning=FALSE}
+
+df %>% 
+  filter(year == 2007) %>% 
+  group_by(continent) %>% 
+  ggplot(aes(x = continent, y = gdpPercap, fill = continent)) +
+  geom_boxplot(outlier.shape = NA, alpha = 0.5) +
+  geom_jitter(width = 0.2, aes(colour = continent), alpha = 0.8) +
+  ggtitle("Spread of GDP per capita within the continents") +
+  xlab("Continent") +
+  ylab("GDP per capita (PPP Dollars)") +
+  theme(legend.position="none") # we dont need a legend
+
+## default: plotting of the last plot made, size 7x7 inches
+ggsave(filename = "plots/plot1.pdf") 
+
+## specify width and height
+ggsave(filename = "plots/plot2.pdf", width = 10, height = 6) 
+
+## change resolution, no effects since our plot is not a raster
+ggsave(filename = "plots/plot3.pdf", dpi = 100) 
+
+## resolution can be changed for raster images
+ggsave(filename = "plots/plot3.png", dpi = 100) 
+
+## Depending on the workflow, we can build up the plot layer by layer 
+## and store it into an object. This can then be passed to the ggsave() function
+
+p <- ggplot(df, aes(x = continent, y = lifeExp, colour = continent)) + 
+      geom_boxplot(outlier.shape = NA, alpha = 0.5)
+p <- p + geom_jitter()
+p <- p + ggtitle("Spread of GDP per capita within the continents")
+p <- p + xlab("Continent")
+p <- p + ylab("GDP per capita (PPP Dollars)")
+p <- p + theme(legend.position="none") # we dont need a legend
+
+ggsave(p, filename = "plots/plot4.pdf") 
+```
+
+
+Now, let's embed the last graph into our report here with `![Alt text](/path/to/img.png)`
+
+![Example graph](plots/plot3.png)
+
+### Finishing up, and Reflection
